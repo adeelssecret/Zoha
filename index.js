@@ -2,163 +2,158 @@ document.addEventListener("DOMContentLoaded", function () {
   // --- CONFIGURATION ---
   const devMode = false; // SET TO 'false' for the real countdown
 
-  // --- INITIALIZATION ---
+  // --- DOM ELEMENTS ---
+  const entryScreen = document.getElementById("entry-screen");
+  const enterBtn = document.getElementById("enter-btn");
+  const countdownSection = document.getElementById("countdown");
+  const mainContent = document.getElementById("main-content");
+  const bgMusic = document.getElementById("bgMusic");
+
+  // --- AUDIO & VIDEO PRELOADING ---
+  const birthdayMusic = new Audio("birthday.mp3");
+  birthdayMusic.preload = "auto";
+
+  // =================================================================
+  // MAIN INITIALIZATION FUNCTION - This is the master controller
+  // =================================================================
   function init() {
-    const countdownSection = document.getElementById("countdown");
-    const mainContent = document.getElementById("main-content");
+    // 1. Setup the entry screen listener
+    enterBtn.addEventListener("click", () => {
+        // Fade out the entry screen
+        entryScreen.style.opacity = "0";
+        setTimeout(() => entryScreen.remove(), 500);
 
-    function showMainContent() {
-      countdownSection.style.transition = "opacity 1s ease-out";
-      countdownSection.style.opacity = "0";
+        // User has interacted, we can now safely play audio
+        bgMusic.volume = 0.1;
+        bgMusic.play();
 
-      setTimeout(() => {
-        countdownSection.remove();
-        mainContent.classList.remove("hidden");
-        // Initialize all features for the main site
-        setupFloatingElements();
-        setupConfetti();
-        setupMusic();
-        setupTimelineScroll();
-        setupVideoPlayer();
-        setupSongPlayer();
-        setupEnvelopeAndLetter();
+        // Start preloading other assets in the background
+        preloadAssets();
 
-      }, 1000);
-    }
-
-    if (devMode) {
-      showMainContent();
-    } else {
-      startCountdown(showMainContent);
-    }
-    $(".envelope-container")
-    .mouseenter(function () {
-      $(".card").stop().animate(
-        {
-          top: "-90px",
-        },
-        "slow"
-      );
-    })
-    .mouseleave(function () {
-      $(".card").stop().animate(
-        {
-          top: 0,
-        },
-        "slow"
-      );
-    });
+        // 2. Decide whether to show countdown or main content
+        if (devMode) {
+          showMainContent();
+        } else {
+          startCountdown(showMainContent);
+        }
+      }, { once: true } // Ensure this only runs once
+    );
   }
 
-  // --- SETUP FUNCTIONS ---
+  // --- CORE LOGIC FUNCTIONS ---
+  function showMainContent() {
+    countdownSection.style.transition = "opacity 1s ease-out";
+    countdownSection.style.opacity = "0";
+
+    setTimeout(() => {
+      countdownSection.remove();
+      mainContent.classList.remove("hidden");
+
+      // 3. Initialize all features for the main site AFTER it's visible
+      setupFloatingElements();
+      setupConfetti();
+      setupMusicControls();
+      setupTimelineScroll();
+      setupVideoPlayer();
+      setupSongPlayer();
+      setupEnvelopeAndLetter();
+
+    }, 1000);
+  }
+
+  function startCountdown(onComplete) {
+    const birthday = new Date("September 28, 2025 04:50:00").getTime();
+    let birthdayAudioPlayed = false;
+
+    const timerInterval = setInterval(() => {
+      const now = new Date().getTime();
+      const distance = birthday - now;
+
+      // Play birthday.mp3 in the last 10 seconds
+      if (distance <= 11000 && !birthdayAudioPlayed) {
+        birthdayAudioPlayed = true;
+        if (bgMusic) bgMusic.pause();
+        birthdayMusic.volume = 0.7;
+        birthdayMusic.play();
+
+        birthdayMusic.addEventListener("ended", () => {
+            if (bgMusic && !devMode) bgMusic.play();
+        }, { once: true });
+      }
+
+      if (distance < 0) {
+        clearInterval(timerInterval);
+        onComplete();
+        return;
+      }
+      // Update timer display
+      document.getElementById("days").innerHTML = Math.floor(distance/(1e3*60*60*24)).toString().padStart(2,"0");
+      document.getElementById("hours").innerHTML = Math.floor(distance%(1e3*60*60*24)/(1e3*60*60)).toString().padStart(2,"0");
+      document.getElementById("minutes").innerHTML = Math.floor(distance%(1e3*60*60)/(1e3*60)).toString().padStart(2,"0");
+      document.getElementById("seconds").innerHTML = Math.floor(distance%(1e3*60)/1e3).toString().padStart(2,"0");
+    }, 1000);
+  }
+  
+  function preloadAssets() {
+    const friendsVideo = document.getElementById("friendsVideo");
+    if (friendsVideo) {
+      friendsVideo.preload = "auto";
+    }
+  }
+
+  // --- FEATURE SETUP FUNCTIONS ---
 
   function setupFloatingElements() {
     const container = document.querySelector(".floating-elements");
     const symbols = ["❤️", "🎂", "🎁", "🎉", "💐", "🌸"];
     for (let i = 0; i < 20; i++) {
-        const el = document.createElement("div");
-        el.className = "floating-element";
-        el.innerHTML = symbols[Math.floor(Math.random() * symbols.length)];
-        el.style.left = `${Math.random() * 100}%`;
-        el.style.fontSize = `${Math.random() * 20 + 15}px`;
-        el.style.animationDuration = `${Math.random() * 10 + 15}s`;
-        el.style.animationDelay = `${Math.random() * 5}s`;
-        container.appendChild(el);
+      const el = document.createElement("div");
+      el.className = "floating-element";
+      el.innerHTML = symbols[Math.floor(Math.random() * symbols.length)];
+      el.style.left = `${Math.random() * 100}%`;
+      el.style.fontSize = `${Math.random() * 20 + 15}px`;
+      el.style.animationDuration = `${Math.random() * 10 + 15}s`;
+      el.style.animationDelay = `${Math.random() * 5}s`;
+      container.appendChild(el);
     }
   }
 
   function setupConfetti() {
-    const canvas = document.getElementById('confetti-canvas');
+    const canvas = document.getElementById("confetti-canvas");
     if (!canvas) return;
     const confettiInstance = confetti.create(canvas, {
-        resize: true,
-        useWorker: true
+      resize: true,
+      useWorker: true,
     });
-    
-    function fireConfetti() {
-        confettiInstance({
-            particleCount: 500,
-            angle: 80,
-            spread: 200,
-            origin: { x: 0 },
-            colors: ['#d16bff', '#ff6ebd', '#e5b6ff']
-        });
-        confettiInstance({
-            particleCount: 500,
-            angle: 100,
-            spread: 200,
-            origin: { x: 1 },
-            colors: ['#d16bff', '#ff6ebd', '#e5b6ff']
-        });
-    }
-    setInterval(fireConfetti, 2000);
+    setInterval(() => {
+        confettiInstance({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ["#d16bff", "#ff6ebd", "#e5b6ff"] });
+        confettiInstance({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ["#d16bff", "#ff6ebd", "#e5b6ff"] });
+    }, 2000);
   }
 
-  function startCountdown(onComplete) {
-    const birthday = new Date("September 25, 2025 00:22:00").getTime();
-    let birthdayAudioPlayed = false;
-    let birthdayAudio;
-    const timerInterval = setInterval(() => {
-        const now = new Date().getTime();
-        const distance = birthday - now;
-
-        // Play birthday.mp3 at last 10 seconds
-        if (distance <= 11000 && !birthdayAudioPlayed) {
-            birthdayAudioPlayed = true;
-            birthdayAudio = new Audio("birthday.mp3");
-            birthdayAudio.volume = 0.7;
-            birthdayAudio.play();
-            // Pause background music while birthday.mp3 is playing
-            const bgMusic = document.getElementById("bgMusic");
-            if (bgMusic) bgMusic.pause();
-            birthdayAudio.addEventListener("ended", function() {
-                // Resume background music after birthday.mp3 ends
-                if (bgMusic) {
-                  bgMusic.volume = 0.1;
-                  bgMusic.play();
-                }
-            });
-        }
-
-        if (distance < 0) {
-            clearInterval(timerInterval);
-            onComplete();
-            return;
-        }
-        document.getElementById("days").innerHTML = Math.floor(distance/(1e3*60*60*24)).toString().padStart(2,"0");
-        document.getElementById("hours").innerHTML = Math.floor(distance%(1e3*60*60*24)/(1e3*60*60)).toString().padStart(2,"0");
-        document.getElementById("minutes").innerHTML = Math.floor(distance%(1e3*60*60)/(1e3*60)).toString().padStart(2,"0");
-        document.getElementById("seconds").innerHTML = Math.floor(distance%(1e3*60)/1e3).toString().padStart(2,"0");
-    }, 1000);
-  }
-
-  function setupMusic() {
-    const bgMusic = document.getElementById("bgMusic");
+  function setupMusicControls() {
     const musicToggle = document.getElementById("musicToggle");
     if (!bgMusic || !musicToggle) return;
     
-    bgMusic.volume = 0.1;
-    let hasInteracted = false;
-    const playMusic = () => {
-        if(hasInteracted) bgMusic.play();
-    };
+    const playMusic = () => bgMusic.play();
     const pauseMusic = () => bgMusic.pause();
 
     musicToggle.addEventListener("click", () => {
-        hasInteracted = true;
-        bgMusic.paused ? playMusic() : pauseMusic();
+      bgMusic.paused ? playMusic() : pauseMusic();
     });
-    // Store music controls globally to be accessed by other players
+    // Store controls globally to be accessed by other players
     window.bgMusicControls = { play: playMusic, pause: pauseMusic };
   }
 
   function setupTimelineScroll() {
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            entry.target.classList.toggle('active', entry.isIntersecting);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          entry.target.classList.toggle("active", entry.isIntersecting);
         });
-    }, { threshold: 0.6 });
-    document.querySelectorAll(".timeline-item").forEach(item => observer.observe(item));
+      }, { threshold: 0.6 }
+    );
+    document.querySelectorAll(".timeline-item").forEach((item) => observer.observe(item));
   }
 
   function setupVideoPlayer() {
@@ -180,7 +175,6 @@ document.addEventListener("DOMContentLoaded", function () {
       progressColor: "#ff6ebd",
       height: 60, barWidth: 3, barRadius: 3, responsive: true,
     });
-    
     // IMPORTANT: Replace with your song's URL
     wavesurfer.load("[FREE] HEAVY METAL TRAP BEAT - ＂SYSTEM＂ ｜ ROCK GUITAR RAP INSTRUMENTAL 2024.wav");
     
@@ -194,45 +188,40 @@ document.addEventListener("DOMContentLoaded", function () {
     const envelope = document.querySelector(".valentines");
     const popup = document.getElementById("letter-popup");
     const closeBtn = document.getElementById("closeLetterBtn");
-    const letterTextContainer = popup.querySelector('.letter-text');
+    const letterTextContainer = popup.querySelector(".letter-text");
 
-    // Split letter into spans for animation
-    const paragraphs = letterTextContainer.querySelectorAll('p');
-    paragraphs.forEach(p => {
-        p.innerHTML = p.innerText.split('').map(char => `<span>${char}</span>`).join('');
+    const paragraphs = letterTextContainer.querySelectorAll("p");
+    paragraphs.forEach((p) => {
+      p.innerHTML = p.innerText.split("").map((char) => `<span>${char}</span>`).join("");
     });
-    const letterSpans = letterTextContainer.querySelectorAll('span');
+    const letterSpans = letterTextContainer.querySelectorAll("span");
 
     function openPopup() {
-        envelope.classList.add('open');
-        setTimeout(() => {
-            popup.classList.remove('hidden');
-            // Trigger scroll animation check when opened
-            handleLetterScroll();
-        }, 10); // Wait for envelope animation
+      envelope.classList.add('open');
+      setTimeout(() => {
+        popup.classList.remove("hidden");
+        handleLetterScroll();
+      }, 800);
     }
-
     function closePopup() {
-        popup.classList.add('hidden');
-        envelope.classList.remove('open'); // Optional: reset envelope
+      popup.classList.add("hidden");
+      envelope.classList.remove('open');
+    }
+    function handleLetterScroll() {
+      const { scrollTop, scrollHeight, clientHeight } = letterTextContainer.parentElement;
+      const scrollPercent = scrollTop / (scrollHeight - clientHeight) + 0.21;
+      const highlightedIndex = Math.floor(letterSpans.length * scrollPercent);
+      letterSpans.forEach((span, i) => {
+        span.classList.toggle("highlight", i <= highlightedIndex);
+      });
     }
 
-    function handleLetterScroll() {
-        const { scrollTop, scrollHeight, clientHeight } = letterTextContainer.parentElement;
-        const scrollPercent = scrollTop / (scrollHeight - clientHeight) + 0.21; // Slight offset to trigger earlier
-        const highlightedIndex = Math.floor(letterSpans.length * scrollPercent);
-        
-        letterSpans.forEach((span, i) => {
-            span.classList.toggle('highlight', i <= highlightedIndex);
-        });
-    }
     envelope.addEventListener("click", openPopup);
     closeBtn.addEventListener("click", closePopup);
     popup.addEventListener("click", (e) => {
-        if (e.target === popup) closePopup(); // Close if clicking on backdrop
+      if (e.target === popup) closePopup();
     });
-    // Add scroll listener to the popup content itself
-    popup.querySelector('.popup-content').addEventListener('scroll', handleLetterScroll);
+    popup.querySelector(".popup-content").addEventListener("scroll", handleLetterScroll);
   }
 
   // --- START THE APP ---
