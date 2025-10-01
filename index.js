@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
   // --- CONFIGURATION ---
-  const devMode = false; // SET TO 'false' for the real countdown
+  const devMode = true; // SET TO 'false' for the real countdown
 
   // --- DOM ELEMENTS ---
   const entryScreen = document.getElementById("entry-screen");
@@ -228,17 +228,47 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function setupTimelineScroll() {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          entry.target.classList.toggle("active", entry.isIntersecting);
-        });
-      },
-      { threshold: 0.6 }
-    );
-    document
-      .querySelectorAll(".timeline-item")
-      .forEach((item) => observer.observe(item));
+    // Wait for all images/videos in timeline to load before observing
+    const timelineItems = document.querySelectorAll(".timeline-item");
+    const mediaElements = Array.from(document.querySelectorAll(".timeline-image"));
+    let loadedCount = 0;
+    function tryObserve() {
+      loadedCount++;
+      if (loadedCount >= mediaElements.length) {
+        // All media loaded, start observing
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              entry.target.classList.toggle("active", entry.isIntersecting);
+            });
+          },
+          { threshold: 0.6 }
+        );
+        timelineItems.forEach((item) => observer.observe(item));
+      }
+    }
+    if (mediaElements.length === 0) {
+      // No media, observe immediately
+      timelineItems.forEach((item) => item.classList.add("active"));
+      return;
+    }
+    mediaElements.forEach((el) => {
+      if (el.tagName === "IMG") {
+        if (el.complete) {
+          tryObserve();
+        } else {
+          el.addEventListener("load", tryObserve);
+          el.addEventListener("error", tryObserve);
+        }
+      } else if (el.tagName === "VIDEO") {
+        if (el.readyState >= 2) {
+          tryObserve();
+        } else {
+          el.addEventListener("loadeddata", tryObserve);
+          el.addEventListener("error", tryObserve);
+        }
+      }
+    });
   }
 
   function setupVideoPlayer() {
