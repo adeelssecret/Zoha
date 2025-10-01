@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
   // --- CONFIGURATION ---
-  const devMode = true; // SET TO 'false' for the real countdown
+  const devMode = false; // SET TO 'false' for the real countdown
 
   // --- DOM ELEMENTS ---
   const entryScreen = document.getElementById("entry-screen");
